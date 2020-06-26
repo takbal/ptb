@@ -26,3 +26,11 @@ def interpolate_nans(x: np.ndarray):
     
     mask = np.isnan(x)
     x[mask] = np.interp( np.flatnonzero(mask), np.flatnonzero(~mask), x[~mask])
+    
+def set_replace_with_npnans(s: set):
+    """fix float("nan") vs np.nan hell"""
+    for x in s:
+        if isinstance(x, float) and np.isnan(x):
+            s.remove(x)
+            s.add(np.nan)
+            

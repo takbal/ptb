@@ -71,9 +71,3 @@ def recursive_dict_merge(base_dct: dict, merge_dct: dict, add_keys=True):
     
     return rtn_dct
 
-def set_replace_with_npnans(s: set):
-    """fix float("nan") vs np.nan hell"""
-    for x in s:
-        if isinstance(x, float) and np.isnan(x):
-            s.remove(x)
-            s.add(np.nan)
