@@ -213,9 +213,10 @@ def generate_new_version(version_index_to_increase: int):
     
     try:
         run_script('pytest')
-    except ScriptException:
-        print('*** tests failed to run, aborting. Check pytest')
-        exit()
+    except ScriptException as se:
+        if se.returncode != 5:
+            print('*** tests failed to run, aborting. Check pytest')
+            exit()
             
     if input("are you sure? [y/n] ") != "y":
         exit()
