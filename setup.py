@@ -4,7 +4,7 @@ from pathlib import Path
 ##### THINGS TO EDIT STARTS #####
 
 # short description of your project
-description = "example package"
+description = "python toolbox"
 
 # list of packages to install
 install_requires = []
