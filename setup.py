@@ -7,7 +7,7 @@ from pathlib import Path
 description = "python toolbox"
 
 # list of packages to install
-install_requires = []
+install_requires = ['tqdm', 'numpy', 'lz4', 'google-api-python-client', 'google-auth-httplib2', 'google-auth-oauthlib']
 
 # additional classifiers
 classifiers = []
