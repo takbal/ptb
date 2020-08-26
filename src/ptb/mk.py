@@ -3,7 +3,8 @@
 """
 simple tool to perform usual tasks on a Python project
 
-this must work stand-alone, and only with system libraries
+Due to potentially being called from command-line and with ptb not installed,
+this must work stand-alone, and only with system libraries.
 
 @author:  Balint Takacs
 @contact: takbal@gmail.com
@@ -127,16 +128,6 @@ def main(args, ptb_location: str):
         print("*** got return code %d while executing:\n\n%s" % (se.returncode, se.script) )       
         print("\n*** output:\n%s" % se.output )       
 
-@contextlib.contextmanager
-def working_directory(path):
-    """Changes working directory and returns to previous on exit."""
-    prev_cwd = Path.cwd()
-    os.chdir(path)
-    try:
-        yield
-    finally:
-        os.chdir(prev_cwd)
-
 def get_basedir() -> Path:
     """determine by guesswork the actual project path, by looking for canonical files/dirs
        of the template from child directories"""
@@ -159,29 +150,6 @@ def get_basedir() -> Path:
         print('guessed project directory as: %s' % actdir)
     
     return actdir
-
-def run_script(script, print_output=False) -> str:
-    output = ''
-    with subprocess.Popen(['bash', '-c', script],
-        stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-        stdin=subprocess.DEVNULL, bufsize=1, universal_newlines=True) as proc:
-        
-        for line in proc.stdout:
-            if print_output:
-                print(line, end='')
-            output += line
-
-    if proc.returncode:
-        raise ScriptException(proc.returncode, output, script)
-    
-    return output
-
-class ScriptException(Exception):
-    def __init__(self, returncode, output, script):
-        self.returncode = returncode
-        self.output = output
-        self.script = script
-        super().__init__('Error in script')
 
 def test_repo_clean() -> bool:
     output = subprocess.check_output(['git', 'status', '--porcelain']).strip()
@@ -260,6 +228,43 @@ def increment_version(version: str, pos: int) -> str:
     nums[pos+1:] = (2-pos)*[0]
     parts = [ str(p) for p in nums ]
     return ".".join(parts)
+
+#### stuff from here are repeated in tools.py, please keep in syncro ####
+
+@contextlib.contextmanager
+def working_directory(path):
+    """Changes working directory and returns to previous on exit."""
+    prev_cwd = Path.cwd()
+    os.chdir(path)
+    try:
+        yield
+    finally:
+        os.chdir(prev_cwd)
+
+def run_script(script, print_output=False) -> str:
+    output = ''
+    with subprocess.Popen(['bash', '-c', script],
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        stdin=subprocess.DEVNULL, bufsize=1, universal_newlines=True) as proc:
+        
+        for line in proc.stdout:
+            if print_output:
+                print(line, end='')
+            output += line
+
+    if proc.returncode:
+        raise ScriptException(proc.returncode, output, script)
+    
+    return output
+
+class ScriptException(Exception):
+    def __init__(self, returncode, output, script):
+        self.returncode = returncode
+        self.output = output
+        self.script = script
+        super().__init__('Error in script')
+
+#### repeated code ends ####
 
 if __name__ == '__main__':
     

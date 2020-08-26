@@ -1,9 +1,9 @@
-#!/home/takacs/projects/ptb/venv/ptb/bin/python --
+#!/usr/bin/env python3
 
 """
 Local and/or grid parallel execution, with checkpointing and optional debugging.
 
-Implemented through the API SGE module and the multiprocessing module.
+Implemented through SGE and the multiprocessing module.
 
 The function to call in parallel should look like:
     
@@ -81,17 +81,18 @@ instances are not asked to checkpoint (but you can do it yourself with write_che
 Jobs listed first are submitted to local execution, and checkpointed grid jobs may get
 transferred to local execution. This means that it is recommended to put jobs that
 take a longer time in the head of the parameter list (e.g. US Low runs in a trading simulator).
+
+@author:  Balint Takacs
+@contact: takbal@gmail.com
 """
 
 import multiprocessing
 import logging
-import oxam.sge
 import os
 import numpy as np
 import lz4.frame
 import pickle
 import time
-import sys
 import tqdm
 import traceback
 
@@ -108,7 +109,7 @@ Cpdata = namedtuple("Cpdata", ["state", "func", "input"])
 A PDS that is pickled into checkpoints.
 """
 
-class ParexecErrorReturn():
+class ParexecErrorReturn:
     """
     A type for a variable that is returned in case of an error. Currently, it only contains
     a string, that may be the formatted traceback of an Exception raised by the function,
@@ -119,6 +120,7 @@ class ParexecErrorReturn():
     """
     def __init__(self, msg):
         self.msg = msg
+
     def __repr__(self):
         return self.msg
   
@@ -177,7 +179,7 @@ def start(
             If it is -1, it is set to multiprocessing.cpu_count().
 
         num_remotes:
-            Maximal number of grid instances to use (via oxam.sge).
+            Maximal number of grid instances to use.
 
         project:
             The grid submission project to use.
@@ -204,8 +206,7 @@ def start(
         threads:
             Specify requested thread range on the grid. This is a string in
             the form of 'x:y', where x is the minimal # of threads and y is
-            the maximal number (see OxAM grid documentation). None means the option
-            is omitted.
+            the maximal number. None means the option is omitted.
             
         show_bars:
             If True, show progress bars instead the scheduler log.
@@ -322,16 +323,14 @@ def start(
         options.append("threaded")
         options.append( threads )
 
-    grid_settings = oxam.sge.GridSettings(project=project,
-                          freeze_data=False,
-                          output_dir="/dev/null", # we have our own logging
-                          email=None,
-                          memory=memory * oxam.sge.Memory.GIGABYTES,
-                          queue=("default.q", "short.q"),
-                          options=options,
-                          name=basename)
-
-    logging.getLogger("oxam.sge").setLevel(logging.WARNING)
+#     grid_settings = GridSettings(project=project,
+#                           freeze_data=False,
+#                           output_dir="/dev/null", # we have our own logging
+#                           email=None,
+#                           memory=memory * Memory.GIGABYTES,
+#                           queue=("default.q", "short.q"),
+#                           options=options,
+#                           name=basename)
         
     if show_bars:
         
@@ -343,164 +342,168 @@ def start(
         
     try:
         
-        with oxam.sge.GridExecutor(grid_settings) as pool:    
+#         with GridExecutor(grid_settings) as pool:    
             
-            # stop if no more jobs to run
-            while any(status < 4):
+# !!! reindent below -> if a grid scheduler is added again, until reindent end:             
             
-                # check if there is any job waiting
-                if not all(status > 0):
+        # stop if no more jobs to run
+        while any(status < 4):
         
-                    # this will just pick the next not running one if no cp is done
-                    nextidx = np.ma.MaskedArray(num_cps_done, status > 0).argmin()
-                            
-                    if debug:
+            # check if there is any job waiting
+            if not all(status > 0):
+    
+                # this will just pick the next not running one if no cp is done
+                nextidx = np.ma.MaskedArray(num_cps_done, status > 0).argmin()
                         
-                        _log.info("starting %s in scheduler" % jobids[nextidx])
+                if debug:
+                    
+                    _log.info("starting %s in scheduler" % jobids[nextidx])
+                                        
+                    status[nextidx] = 1
+                    
+                    # we have to repeat this part of _pe_wrapper() here, for progressrep to work
+                    # not redirecting stdout/stderr, as it messes up with the scheduler
+                    global my_cp_fname_base, my_end_time, my_args, my_func
+                    
+                    my_cp_fname_base = cp_fname_bases[nextidx]
+                    my_end_time = np.nan
+                    my_args = inputs[nextidx]
+                    my_func = func
+
+                    rets[nextidx] = func(None, *inputs[nextidx][0], **inputs[nextidx][1])
+                        
+                    status[nextidx] = 4
+                                    
+                # start on local if there is a free slot
+                elif len(local_running_jobs) < num_locals:
+
+                    _log.info("starting %s as local process" % jobids[nextidx])
+    
+                    server, client = Pipe()
+                    
+                    proc = Process(target=_pe_wrapper,
+                                   args=(func,inputs[nextidx],client,
+                                         np.nan,cp_fname_bases[nextidx],
+                                         log_fname_bases[nextidx]) )
+                    local_running_jobs.add( Job(proc, server, nextidx) )
+                    proc.start()
+                    status[nextidx] = 2
+                    
+                elif len(remote_futures) < num_remotes:
+
+                    _log.info("starting %s on the grid" % jobids[nextidx])
+                    
+#                     remote_futures.add( ( nextidx, \
+#                         pool.submit(_pe_wrapper,
+#                                      func,inputs[nextidx],
+#                                      None,
+#                                      timeout,
+#                                      cp_fname_bases[nextidx],
+#                                      log_fname_bases[nextidx]) ) )
+                    status[nextidx] = 3
+        
+            # launch only +1 job per second. This helps with
+            # overloading resources
+            sleep(1)
                                             
-                        status[nextidx] = 1
-                        
-                        # we have to repeat this part of _pe_wrapper() here, for progressrep to work
-                        # not redirecting stdout/stderr, as it messes up with the scheduler
-                        global my_cp_fname_base, my_end_time, my_args, my_func
-                        
-                        my_cp_fname_base = cp_fname_bases[nextidx]
-                        my_end_time = np.nan
-                        my_args = inputs[nextidx]
-                        my_func = func
+            # check local jobs            
+            jobs_to_remove = set()
+            for job in local_running_jobs:
+                if not job.process.is_alive():
+                    jobs_to_remove.add(job)
+                    if not job.pipe.poll():
+                        # process was terminated without returning value
+                        rets[job.idx] = ParexecErrorReturn("terminated")
+                        _log.warning("%s was terminated" % jobids[job.idx])
+                    else:
+                        try:
+                            rets[job.idx] = job.pipe.recv()
+                        except:
+                            _log.error("error while reading pipe of %s" % jobids[job.idx])
+                            rets[job.idx] = ParexecErrorReturn(traceback.format_exc())
+                        job.pipe.close()
+                        status[job.idx] = 4
+                        _log.info("%s is finished" % jobids[job.idx])
+                    
+            local_running_jobs = local_running_jobs.difference(jobs_to_remove)
 
-                        rets[nextidx] = func(None, *inputs[nextidx][0], **inputs[nextidx][1])
+            # check remote jobs            
+            futures_to_remove = set()
+            for jobidx, rf in remote_futures:
+                if rf.done():
+                    futures_to_remove.add( (jobidx,rf) )
+                    if rf.cancelled():
+                        # process was terminated without returning value
+                        rets[jobidx] = ParexecErrorReturn("terminated")
+                        _log.warning("%s was terminated" % jobids[jobidx])
+                    else:
+                        try:
+                            rets[jobidx] = rf.result()
+                        except:
+                            _log.error("error while reading remote result of %s" % jobids[jobidx])
+                            rets[jobidx] = ParexecErrorReturn(traceback.format_exc())
                             
-                        status[nextidx] = 4
-                                        
-                    # start on local if there is a free slot
-                    elif len(local_running_jobs) < num_locals:
-    
-                        _log.info("starting %s as local process" % jobids[nextidx])
-        
-                        server, client = Pipe()
-                        
-                        proc = Process(target=_pe_wrapper,
-                                       args=(func,inputs[nextidx],client,
-                                             np.nan,cp_fname_bases[nextidx],
-                                             log_fname_bases[nextidx]) )
-                        local_running_jobs.add( Job(proc, server, nextidx) )
-                        proc.start()
-                        status[nextidx] = 2
-                        
-                    elif len(remote_futures) < num_remotes:
-    
-                        _log.info("starting %s on the grid" % jobids[nextidx])
-                        
-                        remote_futures.add( ( nextidx, \
-                            pool.submit(_pe_wrapper,
-                                         func,inputs[nextidx],
-                                         None,
-                                         timeout,
-                                         cp_fname_bases[nextidx],
-                                         log_fname_bases[nextidx]) ) )
-                        status[nextidx] = 3
-            
-                # launch only +1 job per second. This helps with
-                # overloading resources
-                sleep(1)
-                                                
-                # check local jobs            
-                jobs_to_remove = set()
-                for job in local_running_jobs:
-                    if not job.process.is_alive():
-                        jobs_to_remove.add(job)
-                        if not job.pipe.poll():
-                            # process was terminated without returning value
-                            rets[job.idx] = ParexecErrorReturn("terminated")
-                            _log.warning("%s was terminated" % jobids[job.idx])
+                        if isinstance(rets[jobidx], ParexecErrorReturn) and rets[jobidx].msg == "checkpointed": 
+                            # start waiting for the checkpoint file. This is necessary
+                            # because filesystems are unreliable in presenting files to various hosts.
+                            # We take as criterion for re-scheduling that the file appears accessible on
+                            # the server.  
+                            status[jobidx] = 6
+                            rets[jobidx] = None
+                            _log.info("%s is checkpointed, waiting for checkpoint file to appear" % jobids[jobidx])
                         else:
-                            try:
-                                rets[job.idx] = job.pipe.recv()
-                            except:
-                                _log.error("error while reading pipe of %s" % jobids[job.idx])
-                                rets[job.idx] = ParexecErrorReturn(traceback.format_exc())
-                            job.pipe.close()
-                            status[job.idx] = 4
-                            _log.info("%s is finished" % jobids[job.idx])
-                        
-                local_running_jobs = local_running_jobs.difference(jobs_to_remove)
-    
-                # check remote jobs            
-                futures_to_remove = set()
-                for jobidx, rf in remote_futures:
-                    if rf.done():
-                        futures_to_remove.add( (jobidx,rf) )
-                        if rf.cancelled():
-                            # process was terminated without returning value
-                            rets[jobidx] = ParexecErrorReturn("terminated")
-                            _log.warning("%s was terminated" % jobids[jobidx])
-                        else:
-                            try:
-                                rets[jobidx] = rf.result()
-                            except:
-                                _log.error("error while reading remote result of %s" % jobids[jobidx])
-                                rets[jobidx] = ParexecErrorReturn(traceback.format_exc())
-                                
-                            if isinstance(rets[jobidx], ParexecErrorReturn) and rets[jobidx].msg == "checkpointed": 
-                                # start waiting for the checkpoint file. This is necessary
-                                # because filesystems are unreliable in presenting files to various hosts.
-                                # We take as criterion for re-scheduling that the file appears accessible on
-                                # the server.  
-                                status[jobidx] = 6
-                                rets[jobidx] = None
-                                _log.info("%s is checkpointed, waiting for checkpoint file to appear" % jobids[jobidx])
-                            else:
-                                status[jobidx] = 4
-                                _log.info("%s is finished" % jobids[jobidx])
+                            status[jobidx] = 4
+                            _log.info("%s is finished" % jobids[jobidx])
 
-                remote_futures = remote_futures.difference(futures_to_remove)
+            remote_futures = remote_futures.difference(futures_to_remove)
+                
+            # test if any previously running jobs have finished with an error
+            for jobidx in range(num_jobs):     
+                if status[jobidx] < 5 and isinstance(rets[jobidx], ParexecErrorReturn):
+                    status[jobidx] = 5
+                    _log.warning("%s is marked as error finish" % jobids[jobidx])
                     
-                # test if any previously running jobs have finished with an error
-                for jobidx in range(num_jobs):     
-                    if status[jobidx] < 5 and isinstance(rets[jobidx], ParexecErrorReturn):
-                        status[jobidx] = 5
-                        _log.warning("%s is marked as error finish" % jobids[jobidx])
-                        
-                        # dump error message into .stderr so we can check it before the batch finishes
-                        
-                        with open(log_fname_bases[jobidx] + ".stderr", "a") as errfile:
-                            errfile.write(str(rets[jobidx]))
-                        
-                    if status[jobidx] == 6 and os.path.exists(cp_fname_bases[jobidx] + ".checkpoint"):
-                        status[jobidx] = 0
-                        _log.info("%s checkpoint file is available, re-scheduling" % jobids[jobidx])
-                        
-                if show_bars:
+                    # dump error message into .stderr so we can check it before the batch finishes
                     
-                    st = list(status)
+                    with open(log_fname_bases[jobidx] + ".stderr", "a") as errfile:
+                        errfile.write(str(rets[jobidx]))
                     
-                    bar_jobs.n = st.count(4) + st.count(5)
-                    bar_jobs.set_description_str( "wait:%d,loc:%d,rem:%d,end:%d,err:%d,cpt:%d" %
-                                                  (st.count(0), st.count(1) + st.count(2),
-                                                   st.count(3), st.count(4), st.count(5), st.count(6) )
-                                                )
+                if status[jobidx] == 6 and os.path.exists(cp_fname_bases[jobidx] + ".checkpoint"):
+                    status[jobidx] = 0
+                    _log.info("%s checkpoint file is available, re-scheduling" % jobids[jobidx])
                     
-                    # average progress of running jobs
-                                        
-                    running_jobs_indices = [ idx for idx,x in enumerate(st) if x == 1 or x == 2 or x == 3]
+            if show_bars:
+                
+                st = list(status)
+                
+                bar_jobs.n = st.count(4) + st.count(5)
+                bar_jobs.set_description_str( "wait:%d,loc:%d,rem:%d,end:%d,err:%d,cpt:%d" %
+                                              (st.count(0), st.count(1) + st.count(2),
+                                               st.count(3), st.count(4), st.count(5), st.count(6) )
+                                            )
+                
+                # average progress of running jobs
+                                    
+                running_jobs_indices = [ idx for idx,x in enumerate(st) if x == 1 or x == 2 or x == 3]
+                
+                if len(running_jobs_indices) > 0:
+                
+                    progress = 0.0
+
+                    for idx in running_jobs_indices:                    
+                        pfile = cp_fname_bases[idx] + ".progress"
+                        if os.path.exists(pfile):
+                            with open(pfile, "r") as f:
+                                try:
+                                    progress += float(f.read())
+                                except:
+                                    pass
                     
-                    if len(running_jobs_indices) > 0:
-                    
-                        progress = 0.0
-    
-                        for idx in running_jobs_indices:                    
-                            pfile = cp_fname_bases[idx] + ".progress"
-                            if os.path.exists(pfile):
-                                with open(pfile, "r") as f:
-                                    try:
-                                        progress += float(f.read())
-                                    except:
-                                        pass
-                        
-                        bar_progress.n = progress / len(running_jobs_indices)
-                        bar_progress.refresh()
-                        
+                    bar_progress.n = progress / len(running_jobs_indices)
+                    bar_progress.refresh()
+
+# !!! reindent ends             
+                            
         if show_bars:              
             bar_jobs.n = num_jobs
             bar_jobs.refresh()
@@ -550,8 +553,6 @@ def _pe_wrapper(func: Callable, args: tuple, pipe, timeout,
         os.remove(cp_file)
     else:
         start_state = None
-
-    oxam.get_logger("").oxam_logger.set_logfile(log_fname_base + ".oxam")
 
     with open(log_fname_base + ".stdout", "a") as stdout, \
          open(log_fname_base + ".stderr", "a") as stderr:

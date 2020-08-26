@@ -1,7 +1,8 @@
-#!/usr/bin/env python3
-
 """
 useful tools that are related to text processing 
+
+@author:  Balint Takacs
+@contact: takbal@gmail.com
 """
 
 import logging
@@ -47,10 +48,12 @@ def getlogger(name: str, file: str=None, use_stdout=True,
     
     # Create a custom logger
     logger = logging.getLogger(name)
-    logger.propagate = False
     
     if not logger.hasHandlers():
-    
+
+        logger.propagate = False
+        logger.setLevel(min(stream_level, file_level))
+
         if use_stdout:
             c_handler = logging.StreamHandler(sys.stdout)
         else:
@@ -67,5 +70,5 @@ def getlogger(name: str, file: str=None, use_stdout=True,
             f_format = logging.Formatter('%(asctime)s: %(name)s [%(levelname)s]: %(message)s')
             f_handler.setFormatter(f_format)
             logger.addHandler(f_handler)
-
+    
     return logger

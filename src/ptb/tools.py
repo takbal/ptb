@@ -1,14 +1,17 @@
-#!/home/takacs/projects/ptb/venv/ptb/bin/python --
-
 """
 tools that do not fit anywhere else 
+
+@author:  Balint Takacs
+@contact: takbal@gmail.com
 """
 
 import random
-import collections
 import copy
 import contextlib
-import numpy as np
+import os
+import subprocess
+
+from pathlib import Path
 
 @contextlib.contextmanager
 def dummy_context_mgr():
@@ -71,3 +74,35 @@ def recursive_dict_merge(base_dct: dict, merge_dct: dict, add_keys=True):
     
     return rtn_dct
 
+@contextlib.contextmanager
+def working_directory(path):
+    """Changes working directory and returns to previous on exit."""
+    prev_cwd = Path.cwd()
+    os.chdir(path)
+    try:
+        yield
+    finally:
+        os.chdir(prev_cwd)
+
+def run_script(script, print_output=False) -> str:
+    output = ''
+    with subprocess.Popen(['bash', '-c', script],
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        stdin=subprocess.DEVNULL, bufsize=1, universal_newlines=True) as proc:
+        
+        for line in proc.stdout:
+            if print_output:
+                print(line, end='')
+            output += line
+
+    if proc.returncode:
+        raise ScriptException(proc.returncode, output, script)
+    
+    return output
+
+class ScriptException(Exception):
+    def __init__(self, returncode, output, script):
+        self.returncode = returncode
+        self.output = output
+        self.script = script
+        super().__init__('Error in script')

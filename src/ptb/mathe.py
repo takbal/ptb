@@ -1,7 +1,8 @@
-#!/usr/bin/env python3
-
 """
 useful tools that are related to math 
+
+@author:  Balint Takacs
+@contact: takbal@gmail.com
 """
 
 import numpy as np
