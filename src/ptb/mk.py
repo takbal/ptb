@@ -156,8 +156,11 @@ def test_repo_clean() -> bool:
     return len(output) == 0
 
 def generate_changelog():
+    # --ignore-commit-pattern ignores the entire release string
     run_script("""
-        auto-changelog --commit-limit false --ignore-commit-pattern "[AUTO].*"
+        auto-changelog --commit-limit false -o CHANGELOG.md.orig
+        sed '/^-\ \[AUTO\]/d' < CHANGELOG.md.orig > CHANGELOG.md 
+        rm CHANGELOG.md.orig
         git add CHANGELOG.md
         """)
 
