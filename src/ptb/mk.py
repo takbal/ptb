@@ -37,6 +37,9 @@ import subprocess
 import sys
 import os
 import contextlib
+from importlib.metadata import version as importlib_version, PackageNotFoundError
+
+# import pkg_resources
 
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from textwrap import dedent
@@ -270,21 +273,23 @@ class ScriptException(Exception):
 #### repeated code ends ####
 
 if __name__ == '__main__':
-    
+
+    # no error dumps
     sys.tracebacklimit = 0
-    
+
     project_dir = Path(getsourcefile(lambda:0)).resolve().parent.parent.parent
-    
+
     if (project_dir / 'version').exists():
         with open(project_dir / 'version', "r") as f:
             version = f.read()
     else:
         version = 'UNKNOWN'
-    parser = ArgumentParser( description = __import__('__main__').__doc__.split("\n")[1],
-        formatter_class = RawDescriptionHelpFormatter,
-        epilog = dedent(epilog) )    
+
+    parser = ArgumentParser( description=__import__('__main__').__doc__.split("\n")[1],
+        formatter_class=RawDescriptionHelpFormatter,
+        epilog=dedent(epilog) )
     
     parser.add_argument('-V', '--version', action='version', version=version)
     parser.add_argument('task', type=str, default=None, help="the task to perform")
-            
+
     main(parser.parse_args(), project_dir)
