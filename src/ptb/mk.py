@@ -4,7 +4,7 @@
 simple tool to perform usual tasks on a Python project
 
 Due to likely being called from command-line and ptb not installed,
-this must work stand-alone, and only with system libraries.
+this script must work stand-alone, and only with system libraries.
 
 @author:  Balint Takacs
 @contact: takbal@gmail.com
