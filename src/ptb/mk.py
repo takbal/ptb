@@ -3,7 +3,7 @@
 """
 simple tool to perform usual tasks on a Python project
 
-Due to likely being called from command-line and ptb not installed,
+Due to likely being called with ptb not installed,
 this script must work stand-alone, and only with system libraries.
 
 @author:  Balint Takacs
