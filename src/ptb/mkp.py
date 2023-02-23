@@ -116,7 +116,11 @@ def main(args, def_project_location: str):
                         
         else:
 
-            with working_directory(get_project_dir()):
+            project_dir = get_project_dir()
+
+            with working_directory(project_dir):
+
+                print('guessed project directory as: %s' % project_dir)
 
                 if args.task == 'venv':
                     generate_venv()
@@ -167,10 +171,7 @@ def get_project_dir(actdir=None) -> Path:
     
     if actdir == firstdir:
         raise RuntimeError("cannot determine project directory")
-    
-    if actdir != init_dir:
-        print('guessed project directory as: %s' % actdir)
-    
+        
     return actdir
 
 def test_repo_clean() -> bool:
@@ -300,12 +301,13 @@ if __name__ == '__main__':
     # no error dumps
     sys.tracebacklimit = 0
 
-    myprojectdir = get_project_dir( Path(getsourcefile(lambda:0)).resolve() )
+    my_project_dir = get_project_dir( Path(getsourcefile(lambda:0)).resolve() )
 
-    if (myprojectdir / 'setup.cfg').exists():
-        config = configparser.ConfigParser()
-        config.read("setup.cfg")
-        version = config["metadata"]["version"]
+    if (my_project_dir / 'setup.cfg').exists():
+        with working_directory(my_project_dir):
+            config = configparser.ConfigParser()
+            config.read("setup.cfg")
+            version = config["metadata"]["version"]
     else:
         version = 'UNKNOWN'
 
@@ -316,4 +318,4 @@ if __name__ == '__main__':
     parser.add_argument('-V', '--version', action='version', version=version)
     parser.add_argument('task', type=str, default=None, help="the task to perform")
 
-    main(parser.parse_args(), myprojectdir.parent)
+    main(parser.parse_args(), my_project_dir.parent)
