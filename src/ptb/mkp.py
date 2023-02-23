@@ -94,6 +94,13 @@ def main(args, def_project_location: str):
                            str(project_location / 'src' / project_name / (module_name + '.py') ))
             
             with working_directory(project_location):
+
+                config = configparser.ConfigParser()
+                config.read("setup.cfg")
+                config["metadata"]["name"] = project_name
+                with open('setup.cfg', 'w') as f:
+                    config.write(f)
+
                 print('adding git repository ...')
                 run_script('git init')
                 run_script('git add .')
@@ -105,8 +112,6 @@ def main(args, def_project_location: str):
                 need_gitlab = input("do you need a gitlab repo? [y/N]: ")
                 if need_gitlab == 'y':
                     run_script('glab auth login')
-                    config = configparser.ConfigParser()
-                    config.read("setup.cfg")
                     run_script(f'glab repo create --group {config["gitlab"]["group"]}')
                         
         else:
@@ -206,8 +211,8 @@ def generate_new_version(version_index_to_increase: int):
                 
     config = configparser.ConfigParser()
     config.read("setup.cfg")
-    old_version = config["metadata"]["version"]
 
+    old_version = config["metadata"]["version"]
     new_version = increment_version(old_version, version_index_to_increase)
     config["metadata"]["version"] = new_version
     print('incremented version ' + old_version + ' to ' + new_version)
