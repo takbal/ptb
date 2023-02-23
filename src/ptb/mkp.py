@@ -7,11 +7,10 @@ Due to likely being called with ptb not installed,
 this script must work stand-alone, and only with system libraries.
 
 @author:  Balint Takacs
-@contact: takbal@gmail.com
 """
 
 epilog = """
-    Usage: mk TASK
+    Usage: mkp TASK
     
     Where task is one of:
     
@@ -25,18 +24,34 @@ epilog = """
         dist          : create packages with setup.py sdist bdist_wheel (also called if a release is made)
         changelog     : auto-generate changelog (also called if a release is made)
         
-    Creating a new project is going to automatically create a venv, and install 'ptb' and the project in
-    editable mode. 
+    For auto-changelogs to work, you need to use https://www.conventionalcommits.org/en/v1.0.0/#specification
+    Generally, use feat: fix:, feat!:, fix!: docs:  prefixes with optional () scope in a commit if you want
+    it to appear in changelog.
     
-    Generating a release will first check if repo is clean, and the tests run without failure.
-    Then it is going to create the changelog, and checks it in.
-    Finally, it creates the packages automatically.
+    Creating a new project is going to automatically create a venv, and install the project in editable mode. 
+    You need to setup and edit the project template before doing it first.
+    
+    Generating a release will:
+     - check if repo is clean
+     - run the tests
+     - change version
+     - auto-generate the changelog and check it in
+     - create distribution packages
+     - push the release
+
+    You need the following tools to be installed and accessible on path:
+
+    binaries: git, python3, pip
+    python packages: auto-changelog, virtualenv
+
+    If you are using gitlab, 'glab' also needs to be installed.
     """
 
 import subprocess
 import sys
 import os
 import contextlib
+import configparser
 from importlib.metadata import version as importlib_version, PackageNotFoundError
 
 # import pkg_resources
@@ -46,9 +61,8 @@ from textwrap import dedent
 from pathlib import Path
 from inspect import getsourcefile
 
-def main(args, ptb_location: str):
+def main(args, def_project_location: str):
         
-    def_project_location = ptb_location.parent
     template_location = def_project_location / 'templates' / 'python' 
     
     try:
@@ -58,7 +72,6 @@ def main(args, ptb_location: str):
             # create new project
             
             assert template_location.exists(), 'cannot find template location'
-            assert ptb_location.exists(), 'cannot find ptb'
             
             project_name = input("new project (package) name: ")
             assert project_name, 'you must supply a project name'
@@ -87,42 +100,42 @@ def main(args, ptb_location: str):
                 run_script('git commit -m "[AUTO] initial check-in"')
 
                 print('generating venv ...')
-                generate_venv(ptb_location)
+                generate_venv()
+
+                need_gitlab = input("do you need a gitlab repo? [y/N]: ")
+                if need_gitlab == 'y':
+                    run_script('glab auth login')
+                    config = configparser.ConfigParser()
+                    config.read("setup.cfg")
+                    run_script(f'glab repo create --group {config["gitlab"]["group"]}')
                         
         else:
-                    
+
+            with working_directory(get_project_dir()):
+
                 if args.task == 'venv':
-                    assert ptb_location.exists(), 'cannot find ptb'
-                    with working_directory(get_basedir()):
-                        generate_venv(ptb_location)
+                    generate_venv()
             
                 elif args.task == 'dist':
-                    with working_directory(get_basedir()):
-                        generate_dist()
+                    generate_dist()
                         
                 elif args.task == 'build':
-                    with working_directory(get_basedir()):
-                        run_script('python3 setup.py build')
+                    run_script('python3 setup.py build')
                     
                 elif args.task == 'install':
-                    with working_directory(get_basedir()):
-                        run_script('python3 setup.py install')
+                    run_script('python3 setup.py install')
             
                 elif args.task == 'changelog':
-                    with working_directory(get_basedir()):
-                        generate_changelog()
+                    generate_changelog()
                     
                 elif args.task == 'major':
-                    with working_directory(get_basedir()):
-                        generate_new_version(0)
+                    generate_new_version(0)
                     
                 elif args.task == 'minor':
-                    with working_directory(get_basedir()):
-                        generate_new_version(1)
+                    generate_new_version(1)
                     
                 elif args.task == 'patch':
-                    with working_directory(get_basedir()):
-                        generate_new_version(2)
+                    generate_new_version(2)
                     
                 else:
                     raise ValueError('unknown task')
@@ -131,16 +144,17 @@ def main(args, ptb_location: str):
         print("*** got return code %d while executing:\n\n%s" % (se.returncode, se.script) )       
         print("\n*** output:\n%s" % se.output )       
 
-def get_basedir() -> Path:
-    """determine by guesswork the actual project path, by looking for canonical files/dirs
-       of the template from child directories"""
+def get_project_dir(actdir=None) -> Path:
+    """guess the parent project path"""
     
-    actdir = Path.cwd().resolve()
+    if actdir is None:
+        actdir = Path.cwd().resolve()
+
     init_dir = actdir
     firstdir = Path(actdir.parts[0]) # .root is stupid in Windows
     
     def likely_project_dir(actdir) -> bool:
-        filelist = ['src','tests','.autoenv.zsh','setup.py','version']
+        filelist = ['src', 'tests', 'setup.py']
         return all ([ (actdir / f).exists() for f in filelist ])
     
     while not likely_project_dir(actdir) and actdir != firstdir:
@@ -159,24 +173,19 @@ def test_repo_clean() -> bool:
     return len(output) == 0
 
 def generate_changelog():
-    # --ignore-commit-pattern ignores the entire release string
     run_script("""
-        auto-changelog --commit-limit false -o CHANGELOG.md.orig
-        sed '/^-\ \[AUTO\]/d' < CHANGELOG.md.orig > CHANGELOG.md 
-        rm CHANGELOG.md.orig
+        auto-changelog --gitlab
         git add CHANGELOG.md
         """)
 
 def generate_dist():
     run_script('python3 setup.py sdist bdist_wheel')
 
-def generate_venv(ptb_location: Path):
+def generate_venv():
     run_script("""
         rm -rf .venv
-        virtualenv .venv --system-site-packages
+        virtualenv .venv
         . .venv/bin/activate
-        pip install -I ipython
-        pip install -e """ + str(ptb_location) + """
         pip install -e .
         hash -r
         """)
@@ -195,12 +204,16 @@ def generate_new_version(version_index_to_increase: int):
     if input("are you sure? [y/n] ") != "y":
         exit()
                 
-    with open('version') as f:
-        old_version = f.read().strip()
+    config = configparser.ConfigParser()
+    config.read("setup.cfg")
+    old_version = config["metadata"]["version"]
+
     new_version = increment_version(old_version, version_index_to_increase)
+    config["metadata"]["version"] = new_version
     print('incremented version ' + old_version + ' to ' + new_version)
-    with open('version', 'w') as f:
-        f.write(new_version)
+
+    with open('setup.cfg', 'w') as f:
+        config.write(f)
 
     # a bit stupid to check in the changelog post-release, but auto-changelog
     # needs the new release tag first to generate an entry for it
@@ -219,7 +232,12 @@ def generate_new_version(version_index_to_increase: int):
 
     print('creating packages ...')
         
-    generate_dist()        
+    generate_dist()
+
+    print('pushing ...')
+    
+    run_script('git push')
+
 
 def increment_version(version: str, pos: int) -> str:
     """
@@ -235,7 +253,7 @@ def increment_version(version: str, pos: int) -> str:
     parts = [ str(p) for p in nums ]
     return ".".join(parts)
 
-#### stuff from here are repeated in tools.py, please keep in syncro ####
+#### stuff from here are repeated in tools.py so this works standalone, please keep in sync ####
 
 @contextlib.contextmanager
 def working_directory(path):
@@ -277,11 +295,12 @@ if __name__ == '__main__':
     # no error dumps
     sys.tracebacklimit = 0
 
-    project_dir = Path(getsourcefile(lambda:0)).resolve().parent.parent.parent
+    myprojectdir = get_project_dir( Path(getsourcefile(lambda:0)).resolve() )
 
-    if (project_dir / 'version').exists():
-        with open(project_dir / 'version', "r") as f:
-            version = f.read()
+    if (myprojectdir / 'setup.cfg').exists():
+        config = configparser.ConfigParser()
+        config.read("setup.cfg")
+        version = config["metadata"]["version"]
     else:
         version = 'UNKNOWN'
 
@@ -292,4 +311,4 @@ if __name__ == '__main__':
     parser.add_argument('-V', '--version', action='version', version=version)
     parser.add_argument('task', type=str, default=None, help="the task to perform")
 
-    main(parser.parse_args(), project_dir)
+    main(parser.parse_args(), myprojectdir.parent)
