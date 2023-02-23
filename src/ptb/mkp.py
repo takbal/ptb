@@ -111,7 +111,8 @@ def main(args, def_project_location: str):
 
                 need_gitlab = input("do you need a gitlab repo? [y/N]: ")
                 if need_gitlab == 'y':
-                    run_script('glab auth login')
+                    print("if requested, please enter your gitlab access token: ")
+                    run_script('glab auth login --stdin')
                     run_script(f'glab repo create --group {config["gitlab"]["group"]}')
                         
         else:
