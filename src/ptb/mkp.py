@@ -119,6 +119,7 @@ def main(args, def_project_location: str):
                         token = input("gitlab needs login, enter your token: ")
                         run_script(f'glab auth login --token {token}')
                     run_script(f'glab repo create --group {config["gitlab"]["group"]}')
+                    run_script('git push --set-upstream origin master')
                         
         else:
 
