@@ -23,6 +23,7 @@ epilog = """
         venv          : re-create the editable venv for the project (also called if new project is made)
         dist          : create packages with setup.py sdist bdist_wheel (also called if a release is made)
         changelog     : auto-generate changelog (also called if a release is made)
+        format        : run 'black' then 'flake8' on the src/ and tests/ directory
         
     For auto-changelogs to work, you need to use https://www.conventionalcommits.org/en/v1.0.0/#specification
     Generally, use feat: fix:, feat!:, fix!: docs:  prefixes with optional () scope in a commit if you want
@@ -32,6 +33,8 @@ epilog = """
     You need to setup and edit the project template before doing it first.
     
     Generating a release will:
+
+     - run black
      - check if repo is clean
      - run the tests
      - change version
@@ -42,7 +45,7 @@ epilog = """
     You need the following tools to be installed and accessible on path:
 
     binaries: git, python3, pip
-    python packages: auto-changelog, virtualenv
+    python packages: auto-changelog, virtualenv, black, flake8
 
     If you are using gitlab, 'glab' also needs to be installed.
     """
@@ -148,6 +151,10 @@ def main(args, def_project_location: str):
                     
                 elif args.task == 'patch':
                     generate_new_version(2)
+
+                elif args.task == 'format':
+                    run_script('black src tests')
+                    run_script('flake8 src tests')
                     
                 else:
                     raise ValueError('unknown task')
@@ -195,12 +202,14 @@ def generate_venv():
         rm -rf .venv
         virtualenv .venv
         . .venv/bin/activate
-        pip install -e .
+        pip install -e .[dev,test]
         hash -r
         """)
     
 def generate_new_version(version_index_to_increase: int):
         
+    run_script('black src tests')
+
     assert test_repo_clean(), '*** repository is not clean, aborting'
     
     try:
