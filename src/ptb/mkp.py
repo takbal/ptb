@@ -329,6 +329,7 @@ if __name__ == '__main__':
     
     parser.add_argument('-V', '--version', action='version', version=version)
     parser.add_argument('task', type=str, help="the task to perform",
-                        choices=['new', 'build', 'install', 'major', 'minor', 'patch', 'venv', 'dist', 'changelog'])
+                        choices=['new', 'build', 'install', 'major', 'minor', 'patch', 'venv',
+                        'dist', 'changelog', 'format'])
 
     main(parser.parse_args(), my_project_dir.parent)
