@@ -14,7 +14,7 @@ epilog = """
     
     Where task is one of:
     
-        new           : create a new project (guided: enter package, module and location)
+        new           : create a new project (guided: enter package, module and location, optionally gitlab)
         build         : build project with setup.py build
         install       : install project with setup.py install
         major         : generate a major release
@@ -319,6 +319,7 @@ if __name__ == '__main__':
         epilog=dedent(epilog) )
     
     parser.add_argument('-V', '--version', action='version', version=version)
-    parser.add_argument('task', type=str, default=None, help="the task to perform")
+    parser.add_argument('task', type=str, help="the task to perform",
+                        choices=['new', 'build', 'install', 'major', 'minor', 'patch', 'venv', 'dist', 'changelog'])
 
     main(parser.parse_args(), my_project_dir.parent)
