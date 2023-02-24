@@ -24,6 +24,7 @@ epilog = """
         dist          : create packages with setup.py sdist bdist_wheel (also called if a release is made)
         changelog     : auto-generate changelog (also called if a release is made)
         format        : run 'black' then 'flake8' on the src/ and tests/ directory
+        autoimport    : add import statements to .ipython_profile/startup/75-mkp.py from the current deps
         
     For auto-changelogs to work, you need to use https://www.conventionalcommits.org/en/v1.0.0/#specification
     Generally, use feat: fix:, feat!:, fix!: docs:  prefixes with optional () scope in a commit if you want
@@ -63,6 +64,12 @@ from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from textwrap import dedent
 from pathlib import Path
 from inspect import getsourcefile
+
+autoimport_statements = {
+    "numpy" : "import numpy as np",
+    "pandas" : "import pandas as pd",
+    "bottleneck" : "import bottleneck as bn"
+}
 
 def main(args, def_project_location: str):
         
@@ -156,7 +163,10 @@ def main(args, def_project_location: str):
                 elif args.task == 'format':
                     run_script('black src tests')
                     run_script('flake8 src tests')
-                    
+
+                elif args.task == 'autoimport':
+                    generate_autoimport()
+
                 else:
                     raise ValueError('unknown task')
                 
@@ -206,7 +216,20 @@ def generate_venv():
         pip install -e .[dev,test]
         hash -r
         """)
-    
+
+def generate_autoimport():
+    os.makedirs( Path(".ipython_profile") / "startup", exist_ok=True)
+
+    config = configparser.ConfigParser()
+    config.read("setup.cfg")
+    packages = config["options"]["install_requires"]
+
+    with open(Path(".ipython_profile") / "startup" / "75-mkp.py", "w") as file:
+        for key in autoimport_statements:
+            if key in packages:
+                file.write(f"{autoimport_statements[key]}\n")
+                file.write(f"print(\"{autoimport_statements[key]}\")\n")
+
 def generate_new_version(version_index_to_increase: int):
         
     run_script('black src tests')
@@ -331,6 +354,6 @@ if __name__ == '__main__':
     parser.add_argument('-V', '--version', action='version', version=version)
     parser.add_argument('task', type=str, help="the task to perform",
                         choices=['new', 'build', 'install', 'major', 'minor', 'patch', 'venv',
-                        'dist', 'changelog', 'format'])
+                        'dist', 'changelog', 'format', 'autoimport'])
 
     main(parser.parse_args(), my_project_dir.parent)

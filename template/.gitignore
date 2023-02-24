@@ -68,3 +68,6 @@ target/
 
 # flake8
 .flake8
+
+# ipython
+.ipython_profile

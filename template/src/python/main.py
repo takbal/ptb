@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 
-from argparse import ArgumentParser, RawDescriptionHelpFormatter
-from importlib.metadata import version as ilib_version, PackageNotFoundError
-from textwrap import dedent
-
 """
 Short description comes here
 
 Long description comes here
 """
+
+from argparse import ArgumentParser, RawDescriptionHelpFormatter
+from importlib.metadata import version as ilib_version, PackageNotFoundError
+from textwrap import dedent
 
 
 def main(args=None):
