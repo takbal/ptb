@@ -228,7 +228,6 @@ def generate_autoimport():
         for key in autoimport_statements:
             if key in packages:
                 file.write(f"{autoimport_statements[key]}\n")
-                file.write(f"print(\"{autoimport_statements[key]}\")\n")
 
 def generate_new_version(version_index_to_increase: int):
         
