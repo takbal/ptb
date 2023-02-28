@@ -7,6 +7,7 @@ Due to likely being called with ptb not installed,
 this script must work stand-alone, and only with system libraries.
 
 @author:  Balint Takacs
+@contact: takbal@gmail.com
 """
 
 epilog = """
