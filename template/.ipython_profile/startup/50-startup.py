@@ -2,8 +2,7 @@ import sys
 import os
 from pathlib import Path
 from argparse import Namespace as args
-
 from IPython import get_ipython
-ipython = get_ipython()
-ipython.magic("load_ext autoreload") 
-ipython.magic("autoreload 2")
+
+get_ipython().run_line_magic("load_ext", "autoreload")
+get_ipython().run_line_magic("autoreload", "2")
