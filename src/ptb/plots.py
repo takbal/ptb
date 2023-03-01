@@ -37,7 +37,7 @@ def disp(fig, title="plotly", saveto=None, xsize=None, ysize=None, dir="/tmp/fig
 
     os.makedirs(dir, exist_ok=True)
 
-    fig.write_html(Path(dir) / fname, auto_open=False)
+    fig.write_html(Path(dir) / fname, auto_open=False, include_plotlyjs = "directory")
 
     if saveto:
         os.makedirs(saveto, exist_ok=True)
