@@ -60,7 +60,7 @@ def show_html(fname):
         ysize = int(ysize)
 
     web.resize(xsize, ysize)
-    web.setWindowTitle(title)
+    web.setWindowTitle("plotly: " + title)
     web.show()
     retcode = app.exec_()
     os.remove(fname)
