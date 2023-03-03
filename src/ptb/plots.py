@@ -3,42 +3,48 @@ import os
 from pathlib import Path
 from uuid import uuid4
 
-def disp(fig, title="plotly", saveto=None, xsize=None, ysize=None, dir="/tmp/figures"):
+def disp(fig, title="figure", show=True, saveto=None, xsize=None, ysize=None, server_dir="/tmp/figures", include_plotlyjs="cdn"):
     """
-    diplay a plotly plot through the figure server
+    save or diplay a plotly plot through the figure server
 
     Parameters
     ----------
         fig: plotly fig
-            the figure to show
+            the figure
         title: str, default = "plotly"
-            the window title
+            figure title, included in file name
+        show: bool, def=True
+            if true, show the plot
+        saveto : str, optional
+            if present, directory to save the plot into
         xsize: int, optional
-            window x size in pixels, default is max
+            if shown, window x size in pixels, default is max
         ysize: int, optional
-            window y size in pixels, default is max
+            if shown, window y size in pixels, default is max
         dir: str, default = /tmp/figures
             the directory of the figserv.py)
-        saveto : str, optional
-            if present, save a copy with the tile into this directory
+        include_plotlyjs: str, optional, def = "cdn"
+            specifies this field for saveto (see plotly)
     """
 
-    if not xsize:
-        xsize = "max"
-    else:
-        xsize = str(xsize)
+    if show:
 
-    if not ysize:
-        ysize = "max"
-    else:
-        ysize = str(ysize)
+        if not xsize:
+            xsize = "max"
+        else:
+            xsize = str(xsize)
 
-    fname = str(uuid4())[0:7] + "!" + xsize + "!" + ysize + "!" + title + ".html"
+        if not ysize:
+            ysize = "max"
+        else:
+            ysize = str(ysize)
 
-    os.makedirs(dir, exist_ok=True)
+        fname = str(uuid4())[0:7] + "!" + xsize + "!" + ysize + "!" + title + ".html"
 
-    fig.write_html(Path(dir) / fname, auto_open=False, include_plotlyjs = "directory")
+        os.makedirs(server_dir, exist_ok=True)
+
+        fig.write_html(Path(server_dir) / fname, auto_open=False, include_plotlyjs = "directory")
 
     if saveto:
         os.makedirs(saveto, exist_ok=True)
-        fig.write_html(Path(saveto) / (title + ".html"), auto_open=False)
+        fig.write_html(Path(saveto) / (title + ".html"), auto_open=False, include_plotlyjs = include_plotlyjs)
