@@ -260,7 +260,7 @@ def generate_new_version(version_index_to_increase: int):
     # a bit stupid to check in the changelog post-release, but auto-changelog
     # needs the new release tag first to generate an entry for it
 
-    print('tagging release in git ...')
+    print('tagging release for auto-changelog ...')
 
     run_script('git tag -a ' + new_version + ' -m "RELEASE ' + new_version + '"')        
 
@@ -268,17 +268,20 @@ def generate_new_version(version_index_to_increase: int):
     
     generate_changelog()
 
-    print('committing changelog ...')
-    
-    run_script('git commit -a -m "[AUTO] post-release ' + new_version + '"')
-
     print('creating packages ...')
         
     generate_dist()
 
+    print('committing pre-release changes ...')
+    
+    run_script('git commit -a -m "[AUTO] pre-release ' + new_version + '"')
+
     print('pushing ...')
     
+    run_script('git tag -a -f ' + new_version + ' -m "RELEASE ' + new_version + '"')        
     run_script('git push')
+    # push tag
+    run_script('git push origin ' + new_version)
 
 
 def increment_version(version: str, pos: int) -> str:
