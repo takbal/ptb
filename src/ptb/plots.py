@@ -12,7 +12,7 @@ def disp(fig, title="figure", show=True, saveto=None, xsize=None, ysize=None, se
     ----------
         fig: plotly fig
             the figure
-        title: str, default = "plotly"
+        title: str, default = "figure"
             figure title, included in file name
         show: bool, def=True
             if true, show the plot
