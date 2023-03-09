@@ -11,8 +11,7 @@ py()
           projectdir=$(find-up setup.py)
   elif [ -d $HOME/workspace/$1 ]; then
     projectdir=$HOME/workspace/$1
-  elif [ -d $HOME/enki/workspace/$1 ]; then
-    projectdir=$HOME/enki/workspace/$1  
+  # add more directories here if you need them
   else
     echo "cannot find specified environment"
     return 1
@@ -53,7 +52,7 @@ _py() {
     '1: :->python_environment'\
     '*: :->other'
 
-  # add more directories here if you need:
+  # add more directories here if you need them
   envs_ls=`ls -1d $HOME/workspace/*/`
   envs_array=("${(f)envs_ls}")
   envs=()
