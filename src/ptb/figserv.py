@@ -29,6 +29,7 @@ and no syncing is done (so code using 'disp' works in all case).
 
 import os
 import sys
+import webbrowser
 
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from posixpath import join
@@ -67,6 +68,12 @@ def show_html(fname):
     sys.exit(retcode)
 
 
+def show_html_chrome(fname):
+
+    webbrowser.get("/usr/bin/google-chrome").open("file:///" + str(fname))
+    os.remove(fname)
+    sys.exit()
+
 
 def run_service(args):
 
@@ -83,8 +90,12 @@ def run_service(args):
         for f in files:
             if f not in shown:
                 shown.add(f)
-                p = Process(target=show_html, args=(f,))
-                p.start()
+                if args.chrome:
+                    p = Process(target=show_html_chrome, args=(f,))
+                    p.start()
+                else:
+                    p = Process(target=show_html, args=(f,))
+                    p.start()
 
         sleep(1)
 
@@ -101,6 +112,15 @@ if __name__ == '__main__':
         default="/tmp/figures",
         required=False,
         help="the directory to watch",
+    )
+
+    parser.add_argument(
+        "-c",
+        "--chrome",
+        type=bool,
+        default=True,
+        required=False,
+        help="use chrome instead Qt",
     )
 
     run_service(parser.parse_args())
