@@ -200,6 +200,10 @@ def test_repo_clean() -> bool:
     output = subprocess.check_output(['git', 'status', '--porcelain']).strip()
     return len(output) == 0
 
+def test_has_remote() -> bool:
+    output = subprocess.check_output(['git', 'remote', '-v']).strip()
+    return len(output) != 0
+
 def generate_changelog():
     run_script("""
         auto-changelog --gitlab
@@ -275,13 +279,16 @@ def generate_new_version(version_index_to_increase: int):
     print('committing pre-release changes ...')
     
     run_script('git commit -a -m "[AUTO] pre-release ' + new_version + '"')
-
-    print('pushing ...')
     
-    run_script('git tag -a -f ' + new_version + ' -m "RELEASE ' + new_version + '"')        
-    run_script('git push')
-    # push tag
-    run_script('git push origin ' + new_version)
+    print('tagging ...')
+
+    run_script('git tag -a -f ' + new_version + ' -m "RELEASE ' + new_version + '"')      
+
+    if test_has_remote():
+        print('pushing ...')
+        run_script('git push')
+        # push tag
+        run_script('git push origin ' + new_version)
 
 
 def increment_version(version: str, pos: int) -> str:
