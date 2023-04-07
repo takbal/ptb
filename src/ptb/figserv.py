@@ -41,8 +41,8 @@ from PyQt5.QtCore import QUrl
 from PyQt5.QtWebEngineWidgets import QWebEngineView
 from PyQt5.QtWidgets import QApplication
 
-def show_html(fname):
 
+def show_html(fname):
     # expected fname: "id!xsize!ysize!title.html"
     # here xsize and ysize can be "max"
 
@@ -69,7 +69,6 @@ def show_html(fname):
 
 
 def show_html_chrome(fname):
-
     webbrowser.get("/usr/bin/google-chrome").open("file:///" + str(fname))
     sleep(10)
     os.remove(fname)
@@ -77,15 +76,14 @@ def show_html_chrome(fname):
 
 
 def run_service(args):
-
     os.makedirs(args.dir, exist_ok=True)
 
     shown = set()
 
-    while(True):
-        files = list( Path(args.dir).glob("*.html") )
+    while True:
+        files = list(Path(args.dir).glob("*.html"))
 
-        if not(files):
+        if not (files):
             shown.clear()
 
         for f in files:
@@ -101,11 +99,12 @@ def run_service(args):
         sleep(1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
+    parser = ArgumentParser(
+        description=__import__("__main__").__doc__.split("\n")[1],
+        formatter_class=RawDescriptionHelpFormatter,
+    )
 
-    parser = ArgumentParser( description=__import__('__main__').__doc__.split("\n")[1],
-        formatter_class=RawDescriptionHelpFormatter)
-    
     parser.add_argument(
         "-d",
         "--dir",
