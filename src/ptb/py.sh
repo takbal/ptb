@@ -1,5 +1,13 @@
 # automatically select and run ipython in an environment, like "py envname [params]"
 
+find-up () {
+  p=$(pwd)
+  while [[ "$p" != "" && ! -e "$p/$1" ]]; do
+    p=${p%/*}
+  done
+  echo "$p"
+}
+
 py()
 {
   if [[ $1 == "--help" ]]; then
