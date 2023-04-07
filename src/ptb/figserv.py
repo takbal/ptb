@@ -71,6 +71,7 @@ def show_html(fname):
 def show_html_chrome(fname):
 
     webbrowser.get("/usr/bin/google-chrome").open("file:///" + str(fname))
+    sleep(10)
     os.remove(fname)
     sys.exit()
 
