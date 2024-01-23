@@ -70,6 +70,7 @@ autoimport_statements = {
     "numpy": "import numpy as np",
     "pandas": "import pandas as pd",
     "bottleneck": "import bottleneck as bn",
+    "plotly": "import plotly.express as px",
 }
 
 
