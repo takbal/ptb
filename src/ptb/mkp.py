@@ -36,8 +36,8 @@ epilog = """
     
     Generating a release will:
 
-     - run black
      - check if repo is clean
+     - run black and check in changes
      - run the tests
      - change version
      - auto-generate the changelog and check it in
@@ -47,7 +47,7 @@ epilog = """
     You need the following tools to be installed and accessible on path:
 
     binaries: git, python3, pip
-    python packages: auto-changelog, virtualenv, black, flake8
+    python packages: auto-changelog, virtualenv, black, flake8, wheel
 
     If you are using gitlab, 'glab' also needs to be installed.
     """
@@ -257,7 +257,11 @@ def generate_autoimport():
 
 
 def generate_new_version(version_index_to_increase: int):
+
+    assert test_repo_clean(), "*** repository is not clean, aborting"
+
     run_script("black src tests")
+    run_script('git commit -a -m "[AUTO] blacked"')
 
     assert test_repo_clean(), "*** repository is not clean, aborting"
 
