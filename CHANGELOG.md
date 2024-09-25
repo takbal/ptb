@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.0.4 (2024-09-25)
+
+#### New Features
+
+* checking in blacked auto
+* added plotly autoimport
+#### Fixes
+
+* do not error if black did nothing
+
+Full set of changes: [`1.0.3...1.0.4`](git@10.10.10.3:ptb.git/-/compare/1.0.3...1.0.4)
+
 ## 1.0.3 (2023-04-07)
 
 #### New Features

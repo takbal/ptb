@@ -260,7 +260,8 @@ def generate_new_version(version_index_to_increase: int):
     assert test_repo_clean(), "*** repository is not clean, aborting"
 
     run_script("black src tests")
-    run_script('git commit -a -m "[AUTO] blacked"')
+    if not test_repo_clean():
+        run_script('git commit -a -m "[AUTO] blacked"')
 
     assert test_repo_clean(), "*** repository is not clean, aborting"
 
